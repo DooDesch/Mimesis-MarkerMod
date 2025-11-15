@@ -5,6 +5,10 @@ on:
     tags:
       - "v*"
 
+permissions:
+  contents: read
+  packages: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -15,6 +19,15 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      - name: Clone Workspace repository
+        run: |
+          git clone https://${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository_owner }}/Mimesis-Workspace.git ../Workspace || true
+          if [ ! -d "../Workspace" ]; then
+            echo "Workspace repository not found, creating lib directory structure"
+            mkdir -p ../Workspace/lib/melonloader
+            mkdir -p ../Workspace/lib/game
+          fi
 
       - name: Set up .NET
         uses: actions/setup-dotnet@v4
