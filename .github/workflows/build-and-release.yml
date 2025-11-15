@@ -182,14 +182,14 @@ jobs:
       - name: Upload to Thunderstore
         uses: GreenTF/upload-thunderstore-package@v4.3
         with:
-          namespace: DooDesch
-          description: Use paintballs as markers in dungeons. Paintballs create puddles and leave footprints when you walk through them. Without this mod, these effects are useless as they disappear too quickly. MarkerMod makes them into practical markers you can use in dungeons.
           token: ${{ secrets.THUNDERSTORE_TOKEN }}
-          name: MarkerMod
-          version: ${{ needs.build.outputs.version }}
           community: mimesis
+          namespace: DooDesch
+          name: MarkerMod
+          description: Use paintballs as markers in dungeons. Paintballs create puddles and leave footprints when you walk through them. Without this mod, these effects are useless as they disappear too quickly. MarkerMod makes them into practical markers you can use in dungeons.
+          version: ${{ needs.build.outputs.version }}
           repo: mimesis.thunderstore.io
+          path: thunderstore-package
           categories: |
-            Gameplay
-            Visual
+            Mods
 
