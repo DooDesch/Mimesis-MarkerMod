@@ -3,7 +3,7 @@ using HarmonyLib;
 using MarkerMod.Config;
 using MelonLoader;
 
-[assembly: MelonInfo(typeof(MarkerMod.Core), "MarkerMod", "1.0.0", "DooDesch", null)]
+[assembly: MelonInfo(typeof(MarkerMod.Core), "MarkerMod", "1.3.0", "DooDesch", null)]
 [assembly: MelonGame("ReLUGames", "MIMESIS")]
 [assembly: MelonOptionalDependencies("MimicAPI")]
 
