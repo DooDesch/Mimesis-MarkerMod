@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using System.Reflection.Emit;
 using HarmonyLib;
-using MarkerMod.Configuration;
+using MarkerMod.Config;
 using MarkerMod.Managers;
 using Mimic;
 using Mimic.Actors;

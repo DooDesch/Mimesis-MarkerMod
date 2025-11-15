@@ -1,42 +1,50 @@
 using System;
 using MelonLoader;
+using UnityEngine;
 
-namespace MarkerMod.Configuration
+namespace MarkerMod.Config
 {
-    internal static class MarkerPreferences
-    {
-        private const string CategoryId = "MarkerMod";
-        private const string CategoryDisplay = "Marker Mod";
+	internal static class MarkerPreferences
+	{
+		private const string CategoryId = "MarkerMod";
 
-        private static bool _initialized;
+		private static MelonPreferences_Category _category;
+		private static MelonPreferences_Entry<bool> _keepFootprints;
+		private static MelonPreferences_Entry<bool> _keepPuddles;
+		private static MelonPreferences_Entry<float> _lifetimeSeconds;
+		private static MelonPreferences_Entry<bool> _infinitePaintballs;
 
-        private static MelonPreferences_Category _category;
-        private static MelonPreferences_Entry<bool> _keepFootprints;
-        private static MelonPreferences_Entry<bool> _keepPuddles;
-        private static MelonPreferences_Entry<float> _lifetimeSeconds;
-        private static MelonPreferences_Entry<bool> _infinitePaintballs;
+		internal static void Initialize()
+		{
+			if (_category != null)
+			{
+				return;
+			}
 
-        public static bool KeepFootprints => _keepFootprints?.Value ?? true;
-        public static bool KeepPuddles => _keepPuddles?.Value ?? false;
-        public static float PermanentLifetimeSeconds => MathF.Max(1f, _lifetimeSeconds?.Value ?? 86400f);
-        public static bool InfinitePaintballs => _infinitePaintballs?.Value ?? false;
+			_category = MelonPreferences.CreateCategory(CategoryId, "Marker Mod");
+			_keepFootprints = CreateEntry("keepFootprints", true, "Keep Footprints", "Keep paint footprints after puddles dry. When enabled, paint footprints will persist even after the paint puddles have dried up. Default: true");
+			_keepPuddles = CreateEntry("keepPuddles", false, "Keep Puddles", "Keep spawned paint puddles as well. When enabled, both paint footprints and paint puddles will persist. Default: false");
+			_lifetimeSeconds = CreateEntry("permanentLifetimeSeconds", 86400f, "Lifetime", "Lifetime in seconds for persistent paint. This determines how long paint marks will remain visible. Default: 86400 (24 hours)");
+			_infinitePaintballs = CreateEntry("infinitePaintballs", false, "Infinite Paintballs", "Paintballs are not consumed when thrown. When enabled, you can throw paintballs infinitely without them being removed from your inventory. Default: false");
+		}
 
-        public static void Initialize()
-        {
-            if (_initialized)
-            {
-                return;
-            }
+		private static MelonPreferences_Entry<T> CreateEntry<T>(string identifier, T defaultValue, string displayName, string description = null)
+		{
+			if (_category == null)
+			{
+				throw new InvalidOperationException("Preference category not initialized.");
+			}
 
-            _category = MelonPreferences.CreateCategory(CategoryId, CategoryDisplay);
-            _keepFootprints = _category.CreateEntry("keepFootprints", true, "Keep paint footprints after puddles dry?");
-            _keepPuddles = _category.CreateEntry("keepPuddles", false, "Keep spawned paint puddles as well?");
-            _lifetimeSeconds = _category.CreateEntry("permanentLifetimeSeconds", 86400f, "Lifetime in seconds for persistent paint");
-            _infinitePaintballs = _category.CreateEntry("infinitePaintballs", false, "Paintballs are not consumed when thrown (infinite paintballs)");
-            _category.SaveToFile(false);
+			return _category.CreateEntry(identifier, defaultValue, displayName, description);
+		}
 
-            _initialized = true;
-        }
-    }
+		internal static bool KeepFootprints => _keepFootprints.Value;
+
+		internal static bool KeepPuddles => _keepPuddles.Value;
+
+		internal static float PermanentLifetimeSeconds => Mathf.Max(1f, _lifetimeSeconds.Value);
+
+		internal static bool InfinitePaintballs => _infinitePaintballs.Value;
+	}
 }
 

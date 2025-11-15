@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Reflection;
 using Bifrost.Cooked;
-using MarkerMod.Configuration;
+using MarkerMod.Config;
 using ReluProtocol;
 using HarmonyLib;
 using UnityEngine;
