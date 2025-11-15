@@ -704,6 +704,6 @@
 	<Target Name="PostBuild" AfterTargets="Build" Condition="'$(OS)' == 'Windows_NT'">
 		<Exec Condition="Exists('$(ModsDirectory)')" Command="cmd /c copy /Y &quot;$(TargetPath)&quot; &quot;$(ModsDirectory)&quot;" ContinueOnError="true" />
 		<Exec Condition="Exists('$(ModsDirectory)') And Exists('$(MimicAPIPath)\bin\$(Configuration)\netstandard2.1\MimicAPI.dll')" Command="cmd /c copy /Y &quot;$(MimicAPIPath)\bin\$(Configuration)\netstandard2.1\MimicAPI.dll&quot; &quot;$(ModsDirectory)&quot;" ContinueOnError="true" />
-		<Exec Condition="Exists('$(GameExePath)')" Command="powershell -NoProfile -ExecutionPolicy Bypass -Command &quot;if (-not (Get-Process -Name 'MIMESIS' -ErrorAction SilentlyContinue)) { Start-Process -FilePath '$(GameExePath)' }&quot;" ContinueOnError="true" />
+		<Exec Condition="Exists('$(GameExePath)') And '$(GIT_INDEX_FILE)' == ''" Command="powershell -NoProfile -ExecutionPolicy Bypass -Command &quot;if (-not (Get-Process -Name 'MIMESIS' -ErrorAction SilentlyContinue)) { Start-Process -FilePath '$(GameExePath)' }&quot;" ContinueOnError="true" />
 	</Target>
 </Project>
