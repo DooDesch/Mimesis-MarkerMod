@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using MimicAPI.GameAPI;
+using MarkerMod.Services;
 using MelonLoader;
 
 namespace MarkerMod.Managers
@@ -25,8 +26,6 @@ namespace MarkerMod.Managers
         {
             2030, 70010, 70011, 70012, 70013, 70014, 70015, 70016, 70017, 70018
         };
-        
-        private static readonly Dictionary<string, Material> originalMaterialsCache = new Dictionary<string, Material>();
 
         internal static void CycleColor()
         {
@@ -97,6 +96,9 @@ namespace MarkerMod.Managers
                     return;
                 }
 
+                bool useDefaultMaterial = !hasColorBeenSelected || currentColorIndex == -1;
+                Color color = GetCurrentColor();
+                
                 Renderer[] renderers = itemTransform.GetComponentsInChildren<Renderer>(true);
                 if (renderers == null || renderers.Length == 0)
                 {
@@ -105,122 +107,23 @@ namespace MarkerMod.Managers
 
                 foreach (Renderer renderer in renderers)
                 {
-                    if (renderer == null || !renderer.enabled)
-                    {
-                        continue;
-                    }
-
-                    Material[] materials = renderer.materials;
-                    if (materials == null || materials.Length == 0)
-                    {
-                        continue;
-                    }
-
-                    for (int i = 0; i < materials.Length; i++)
-                    {
-                        if (materials[i] != null)
-                        {
-                            string materialKey = $"{renderer.GetInstanceID()}_{i}";
-                            Material originalMaterial;
-                            
-                            if (!originalMaterialsCache.ContainsKey(materialKey))
-                            {
-                                Material currentMat = materials[i];
-                                originalMaterial = new Material(currentMat);
-                                
-                                if (originalMaterial.HasProperty("_MainTex") && originalMaterial.GetTexture("_MainTex") == Texture2D.whiteTexture)
-                                {
-                                    originalMaterial.SetTexture("_MainTex", null);
-                                }
-                                if (originalMaterial.HasProperty("_BaseMap") && originalMaterial.GetTexture("_BaseMap") == Texture2D.whiteTexture)
-                                {
-                                    originalMaterial.SetTexture("_BaseMap", null);
-                                }
-                                
-                                originalMaterialsCache[materialKey] = originalMaterial;
-                            }
-                            else
-                            {
-                                originalMaterial = originalMaterialsCache[materialKey];
-                            }
-                            
-                            if (!hasColorBeenSelected || currentColorIndex == -1)
-                            {
-                                materials[i] = new Material(originalMaterial);
-                                continue;
-                            }
-                            
-                            Material newMaterial = new Material(originalMaterial);
-                            Color currentColor = GetCurrentColor();
-                            
-                            if (newMaterial.HasProperty("_Color"))
-                            {
-                                if (newMaterial.HasProperty("_MainTex"))
-                                {
-                                    Texture2D whiteTexture = Texture2D.whiteTexture;
-                                    newMaterial.SetTexture("_MainTex", whiteTexture);
-                                }
-                                if (newMaterial.HasProperty("_BaseMap"))
-                                {
-                                    Texture2D whiteTexture = Texture2D.whiteTexture;
-                                    newMaterial.SetTexture("_BaseMap", whiteTexture);
-                                }
-                                
-                                if (currentColorIndex == 7)
-                                {
-                                    newMaterial.SetColor("_Color", new Color(0.15f, 0.15f, 0.15f, 1f));
-                                }
-                                else
-                                {
-                                    newMaterial.SetColor("_Color", currentColor);
-                                }
-                            }
-                            else if (newMaterial.HasProperty("_BaseColor"))
-                            {
-                                if (newMaterial.HasProperty("_BaseMap"))
-                                {
-                                    Texture2D whiteTexture = Texture2D.whiteTexture;
-                                    newMaterial.SetTexture("_BaseMap", whiteTexture);
-                                }
-                                
-                                if (currentColorIndex == 7)
-                                {
-                                    newMaterial.SetColor("_BaseColor", new Color(0.15f, 0.15f, 0.15f, 1f));
-                                }
-                                else
-                                {
-                                    newMaterial.SetColor("_BaseColor", currentColor);
-                                }
-                            }
-                            else if (newMaterial.HasProperty("_TintColor"))
-                            {
-                                if (newMaterial.HasProperty("_MainTex"))
-                                {
-                                    Texture2D whiteTexture = Texture2D.whiteTexture;
-                                    newMaterial.SetTexture("_MainTex", whiteTexture);
-                                }
-                                
-                                if (currentColorIndex == 7)
-                                {
-                                    newMaterial.SetColor("_TintColor", new Color(0.15f, 0.15f, 0.15f, 1f));
-                                }
-                                else
-                                {
-                                    newMaterial.SetColor("_TintColor", currentColor);
-                                }
-                            }
-
-                            materials[i] = newMaterial;
-                        }
-                    }
-
-                    renderer.materials = materials;
+                    MaterialColorService.ApplyColorToRenderer(renderer, color, useDefaultMaterial);
                 }
             }
             catch (System.Exception ex)
             {
                 MelonLogger.Error($"[PaintBallColorManager] Error: {ex.Message}\n{ex.StackTrace}");
             }
+        }
+
+        internal static bool HasColorBeenSelected()
+        {
+            return hasColorBeenSelected;
+        }
+
+        internal static int GetCurrentColorIndex()
+        {
+            return currentColorIndex;
         }
     }
 }

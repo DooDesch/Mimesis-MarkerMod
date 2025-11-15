@@ -5,6 +5,7 @@ using System.Reflection.Emit;
 using HarmonyLib;
 using MarkerMod.Config;
 using MarkerMod.Managers;
+using MarkerMod.Services;
 using MelonLoader;
 using Mimic;
 using Mimic.Actors;
@@ -36,10 +37,39 @@ namespace MarkerMod.Patches
         }
 
         [HarmonyPostfix]
-        public static void Postfix(FieldSkillObjectInfo fieldSkillObjectInfo, ref float __result)
+        public static void Postfix(FieldSkillActor __instance, FieldSkillObjectInfo fieldSkillObjectInfo, ref float __result)
         {
             PaintPersistenceManager.TrackDecal(fieldSkillObjectInfo);
             __result = PaintPersistenceManager.OverrideLifetime(fieldSkillObjectInfo, __result);
+
+            if (MarkerPreferences.EnablePaintballColorChange && fieldSkillObjectInfo != null)
+            {
+                try
+                {
+                    if (PaintBallColorManager.IsPaintball(fieldSkillObjectInfo.fieldSkillMasterID) && PaintBallColorManager.HasColorBeenSelected())
+                    {
+                        if (__instance != null)
+                        {
+                            __instance.StartCoroutine(ApplyColorToProjectileCoroutine(__instance, PaintBallColorManager.GetCurrentColor()));
+                        }
+                    }
+                }
+                catch (System.Exception ex)
+                {
+                    MelonLogger.Error($"[PaintballProjectileColor] Error: {ex.Message}\n{ex.StackTrace}");
+                }
+            }
+        }
+
+        private static System.Collections.IEnumerator ApplyColorToProjectileCoroutine(FieldSkillActor actor, Color color)
+        {
+            yield return null;
+            yield return null;
+
+            if (actor != null && actor.transform != null)
+            {
+                MarkerMod.Services.MaterialColorService.ApplyColorToTransform(actor.transform, color, useDefaultMaterial: false);
+            }
         }
     }
 
@@ -83,7 +113,7 @@ namespace MarkerMod.Patches
     internal static class DecalDataCreatePatch
     {
         [HarmonyPrefix]
-        public static void Prefix(string pathWithSocket, ref long lifetimeMSec, ref long fadeoutMSec, Transform spawnBase)
+        public static void Prefix(string pathWithSocket, ref string colorId, ref long lifetimeMSec, ref long fadeoutMSec, Transform spawnBase)
         {
             // Check if this is a paintball decal
             bool hasPaintKeyword = !string.IsNullOrEmpty(pathWithSocket) && pathWithSocket.IndexOf("paint", StringComparison.OrdinalIgnoreCase) >= 0;
@@ -103,6 +133,15 @@ namespace MarkerMod.Patches
             {
                 lifetimeMSec = PaintPersistenceManager.PermanentLifetimeMilliseconds;
                 fadeoutMSec = 0L;
+            }
+
+            if (MarkerPreferences.EnablePaintballColorChange && hasPaintKeyword)
+            {
+                string newColorId = DecalColorService.GetDecalColorIdForCurrentColor();
+                if (!string.IsNullOrEmpty(newColorId))
+                {
+                    colorId = newColorId;
+                }
             }
         }
         

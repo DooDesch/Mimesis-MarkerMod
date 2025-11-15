@@ -683,6 +683,8 @@
 		<Compile Include="Config\MarkerPreferences.cs" />
 		<Compile Include="Managers\PaintPersistenceManager.cs" />
 		<Compile Include="Managers\PaintBallColorManager.cs" />
+		<Compile Include="Services\MaterialColorService.cs" />
+		<Compile Include="Services\DecalColorService.cs" />
 		<Compile Include="Patches\PaintPersistencePatches.cs" />
 		<Compile Include="Patches\PaintBallColorPatch.cs" />
 	</ItemGroup>
