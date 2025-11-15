@@ -27,6 +27,12 @@ jobs:
           path: Workspace
           ssh-key: ${{ secrets.WORKSPACE_TOKEN }}
 
+      - name: Checkout MimicAPI repository
+        uses: actions/checkout@v4
+        with:
+          repository: NeoMimicry/MimicAPI
+          path: Workspace/MimicAPI
+
       - name: Set up .NET
         uses: actions/setup-dotnet@v4
         with:
