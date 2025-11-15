@@ -2,3 +2,6 @@
 bin
 obj
 decompiled
+release
+*.zip
+thunderstore-package

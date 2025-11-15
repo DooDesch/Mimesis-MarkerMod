@@ -1,0 +1,106 @@
+name: Build and Release on Tag
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version-check.outputs.version }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Verify version in csproj matches the tag
+        id: version-check
+        run: |
+          TAG_VERSION="${GITHUB_REF#refs/tags/v}"
+          CS_VERSION=$(grep -oPm1 "(?<=<Version>)[^<]+" MarkerMod.csproj)
+          if [ "$TAG_VERSION" != "$CS_VERSION" ]; then
+            echo "Version mismatch: Tag version is $TAG_VERSION, but csproj version is $CS_VERSION"
+            exit 1
+          fi
+          echo "version=$TAG_VERSION" >> $GITHUB_OUTPUT
+
+      - name: Build the project
+        run: dotnet build --configuration Release
+
+      - name: Prepare release directory
+        run: |
+          mkdir -p release
+          cp bin/Release/netstandard2.1/MarkerMod.dll release/
+          if [ -d "thunderstore" ]; then
+            cp -r thunderstore/* release/ 2>/dev/null || true
+            # Update version in manifest.json if it exists
+            if [ -f "release/manifest.json" ]; then
+              sed -i "s/\"version_number\": \".*\"/\"version_number\": \"${{ steps.version-check.outputs.version }}\"/" release/manifest.json
+            fi
+          fi
+          if [ -f "README.md" ]; then
+            cp README.md release/
+          fi
+
+      - name: Create release ZIP
+        run: zip -j "MarkerMod_${{ steps.version-check.outputs.version }}.zip" release/*
+
+      - name: Upload Release ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: MarkerMod
+          path: "MarkerMod_${{ steps.version-check.outputs.version }}.zip"
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download built ZIP
+        uses: actions/download-artifact@v4
+        with:
+          name: MarkerMod
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: "MarkerMod_${{ needs.build.outputs.version }}.zip"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  thunderstore:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download built ZIP
+        uses: actions/download-artifact@v4
+        with:
+          name: MarkerMod
+
+      - name: Extract ZIP for Thunderstore
+        run: |
+          mkdir -p thunderstore-package
+          unzip -q "MarkerMod_${{ needs.build.outputs.version }}.zip" -d thunderstore-package/
+
+      - name: Upload to Thunderstore
+        uses: GreenTF/upload-thunderstore-package@v4.3
+        with:
+          namespace: DooDesch
+          description: Use paintballs as markers in dungeons. Paintballs create puddles and leave footprints when you walk through them. Without this mod, these effects are useless as they disappear too quickly. MarkerMod makes them into practical markers you can use in dungeons.
+          token: ${{ secrets.THUNDERSTORE_TOKEN }}
+          name: MarkerMod
+          version: ${{ needs.build.outputs.version }}
+          community: Mimesis
+          repo: mimesis.thunderstore.io
+          categories: |
+            Gameplay
+            Visual
+

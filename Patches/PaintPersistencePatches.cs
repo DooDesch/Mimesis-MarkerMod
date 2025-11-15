@@ -1,7 +1,9 @@
 using System.Collections.Generic;
 using System.Reflection.Emit;
 using HarmonyLib;
+using MarkerMod.Configuration;
 using MarkerMod.Managers;
+using Mimic;
 using Mimic.Actors;
 using ReluProtocol;
 using UnityEngine;
@@ -80,6 +82,41 @@ namespace MarkerMod.Patches
         public static void Postfix(DecalManager.DecalData __result)
         {
             PaintPersistenceManager.EnsureDecalLifetime(__result);
+        }
+    }
+
+    [HarmonyPatch(typeof(InventoryItem), nameof(InventoryItem.UpdateInfo))]
+    internal static class InventoryItemUpdateInfoPatch
+    {
+        // Paintball ItemMasterIDs: 70010-70018
+        private static readonly HashSet<int> PaintballMasterIDs = new HashSet<int>
+        {
+            70010, 70011, 70012, 70013, 70014, 70015, 70016, 70017, 70018
+        };
+
+        [HarmonyPrefix]
+        public static void Prefix(InventoryItem __instance, ref ItemInfo info)
+        {
+            // Prevent paintball consumption if infinite paintballs is enabled
+            if (MarkerPreferences.InfinitePaintballs && 
+                PaintballMasterIDs.Contains(__instance.ItemMasterID) &&
+                __instance.ItemID == info.itemID &&
+                info.stackCount < __instance.StackCount)
+            {
+                // Restore the original stack count in the ItemInfo
+                info = new ItemInfo
+                {
+                    itemID = info.itemID,
+                    itemMasterID = info.itemMasterID,
+                    itemType = info.itemType,
+                    stackCount = __instance.StackCount, // Keep the original count
+                    durability = info.durability,
+                    remainGauge = info.remainGauge,
+                    isTurnOn = info.isTurnOn,
+                    isFake = info.isFake,
+                    price = info.price
+                };
+            }
         }
     }
 }

@@ -1,0 +1,13 @@
+{
+  "name": "MarkerMod",
+  "version_number": "1.0.0",
+  "website_url": "https://github.com/DooDesch/Mimesis-MarkerMod",
+  "description": "MarkerMod is a lightweight MelonLoader mod for Mimesis that keeps paintball puddles and the resulting footprints around for as long as you like.",
+  "dependencies": [
+    "LavaGang-MelonLoader-0.7.1"
+  ],
+  "contributors": [
+    "DooDesch"
+  ]
+}
+
