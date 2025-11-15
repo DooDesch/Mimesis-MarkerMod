@@ -101,9 +101,12 @@ jobs:
             if [ -f "thunderstore/CHANGELOG.md" ]; then
               cp thunderstore/CHANGELOG.md release/
             fi
-          fi
-          if [ -f "README.md" ]; then
-            cp README.md release/
+            # Recreate README.md as UTF-8 without BOM
+            if [ -f "thunderstore/README.md" ]; then
+              cat thunderstore/README.md | iconv -f UTF-8 -t UTF-8//IGNORE > release/README.md 2>/dev/null || \
+              sed '1s/^\xEF\xBB\xBF//' thunderstore/README.md > release/README.md || \
+              cp thunderstore/README.md release/README.md
+            fi
           fi
 
       - name: Create release ZIP
@@ -151,6 +154,11 @@ jobs:
           echo "$CHANGELOG" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
+      - name: Download built ZIP
+        uses: actions/download-artifact@v4
+        with:
+          name: MarkerMod
+
       - name: Extract DLL from ZIP
         run: |
           unzip -q "MarkerMod_${{ needs.build.outputs.version }}.zip" -d release/
@@ -184,14 +192,6 @@ jobs:
           mkdir -p thunderstore-package
           unzip -q "MarkerMod_${{ needs.build.outputs.version }}.zip" -d thunderstore-package/
           
-      - name: Fix README encoding
-        run: |
-          if [ -f "thunderstore-package/README.md" ]; then
-            # Remove BOM and ensure UTF-8 encoding
-            sed -i '1s/^\xEF\xBB\xBF//' thunderstore-package/README.md || true
-            # Re-encode to UTF-8 without BOM
-            python3 -c "import sys; data = open('thunderstore-package/README.md', 'rb').read(); data = data.decode('utf-8-sig').encode('utf-8'); open('thunderstore-package/README.md', 'wb').write(data)"
-          fi
 
       - name: Upload to Thunderstore
         uses: GreenTF/upload-thunderstore-package@v4.3
