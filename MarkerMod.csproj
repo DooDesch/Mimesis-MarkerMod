@@ -673,7 +673,7 @@
 
 	<ItemGroup>
 		<Compile Include="Core.cs" />
-		<Compile Include="Configuration\MarkerPreferences.cs" />
+		<Compile Include="Config\MarkerPreferences.cs" />
 		<Compile Include="Managers\PaintPersistenceManager.cs" />
 		<Compile Include="Patches\PaintPersistencePatches.cs" />
 	</ItemGroup>

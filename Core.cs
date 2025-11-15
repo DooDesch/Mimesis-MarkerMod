@@ -1,5 +1,4 @@
-﻿using HarmonyLib;
-using MarkerMod.Configuration;
+﻿using MarkerMod.Configuration;
 using MelonLoader;
 
 [assembly: MelonInfo(typeof(MarkerMod.Core), "MarkerMod", "1.0.0", "DooDesch", null)]
@@ -9,21 +8,11 @@ namespace MarkerMod
 {
     public class Core : MelonMod
     {
-        private HarmonyLib.Harmony _harmony;
-
         public override void OnInitializeMelon()
         {
             MarkerPreferences.Initialize();
-
-            _harmony = new HarmonyLib.Harmony("MarkerMod.PaintPersistence");
-            _harmony.PatchAll();
-
-            LoggerInstance.Msg($"MarkerMod ready | lifespan={MarkerPreferences.PermanentLifetimeSeconds:F0}s footprints={MarkerPreferences.KeepFootprints} puddles={MarkerPreferences.KeepPuddles}");
-        }
-
-        public override void OnDeinitializeMelon()
-        {
-            _harmony?.UnpatchSelf();
+			HarmonyInstance.PatchAll();
+            LoggerInstance.Msg($"MarkerMod initialized. Lifespan={MarkerPreferences.PermanentLifetimeSeconds:F0}s, Footprints={MarkerPreferences.KeepFootprints}, Puddles={MarkerPreferences.KeepPuddles}");
         }
     }
 }
