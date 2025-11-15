@@ -13,6 +13,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up .NET
         uses: actions/setup-dotnet@v4
@@ -30,6 +32,47 @@ jobs:
           fi
           echo "version=$TAG_VERSION" >> $GITHUB_OUTPUT
 
+      - name: Generate changelog
+        id: changelog
+        run: |
+          TAG_VERSION="${GITHUB_REF#refs/tags/v}"
+          PREVIOUS_TAG=$(git tag --sort=-v:refname | grep -E "^v[0-9]+\.[0-9]+\.[0-9]+$" | sed -n '2p')
+          
+          if [ -z "$PREVIOUS_TAG" ]; then
+            echo "No previous tag found, using all commits"
+            CHANGELOG=$(git log --pretty=format:"- %s (%h)" --no-merges)
+          else
+            echo "Previous tag: $PREVIOUS_TAG"
+            CHANGELOG=$(git log ${PREVIOUS_TAG}..HEAD --pretty=format:"- %s (%h)" --no-merges)
+          fi
+          
+          if [ -z "$CHANGELOG" ]; then
+            CHANGELOG="- No changes documented"
+          fi
+          
+          # Create changelog content
+          CHANGELOG_CONTENT="# Changelog
+
+          ## Version $TAG_VERSION
+
+          $CHANGELOG
+          "
+          
+          # Update or create CHANGELOG.md
+          if [ -f "thunderstore/CHANGELOG.md" ]; then
+            # Prepend new version to existing changelog
+            echo "$CHANGELOG_CONTENT" > thunderstore/CHANGELOG.md.new
+            tail -n +2 thunderstore/CHANGELOG.md >> thunderstore/CHANGELOG.md.new
+            mv thunderstore/CHANGELOG.md.new thunderstore/CHANGELOG.md
+          else
+            echo "$CHANGELOG_CONTENT" > thunderstore/CHANGELOG.md
+          fi
+          
+          # Output changelog for release notes
+          echo "changelog<<EOF" >> $GITHUB_OUTPUT
+          echo "$CHANGELOG" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
       - name: Build the project
         run: dotnet build --configuration Release
 
@@ -42,6 +85,10 @@ jobs:
             # Update version in manifest.json if it exists
             if [ -f "release/manifest.json" ]; then
               sed -i "s/\"version_number\": \".*\"/\"version_number\": \"${{ steps.version-check.outputs.version }}\"/" release/manifest.json
+            fi
+            # Ensure CHANGELOG.md is included
+            if [ -f "thunderstore/CHANGELOG.md" ]; then
+              cp thunderstore/CHANGELOG.md release/
             fi
           fi
           if [ -f "README.md" ]; then
@@ -66,10 +113,41 @@ jobs:
         with:
           name: MarkerMod
 
+      - name: Checkout code for changelog
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate changelog for release
+        id: changelog-release
+        run: |
+          TAG_VERSION="${{ needs.build.outputs.version }}"
+          PREVIOUS_TAG=$(git tag --sort=-v:refname | grep -E "^v[0-9]+\.[0-9]+\.[0-9]+$" | sed -n '2p')
+          
+          if [ -z "$PREVIOUS_TAG" ]; then
+            echo "No previous tag found, using all commits"
+            CHANGELOG=$(git log --pretty=format:"- %s (%h)" --no-merges)
+          else
+            echo "Previous tag: $PREVIOUS_TAG"
+            CHANGELOG=$(git log ${PREVIOUS_TAG}..HEAD --pretty=format:"- %s (%h)" --no-merges)
+          fi
+          
+          if [ -z "$CHANGELOG" ]; then
+            CHANGELOG="- No changes documented"
+          fi
+          
+          echo "changelog<<EOF" >> $GITHUB_OUTPUT
+          echo "$CHANGELOG" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v1
         with:
           files: "MarkerMod_${{ needs.build.outputs.version }}.zip"
+          body: |
+            ## Changes in ${{ needs.build.outputs.version }}
+
+            ${{ steps.changelog-release.outputs.changelog }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
