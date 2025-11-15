@@ -673,7 +673,9 @@
 
 	<ItemGroup>
 		<Compile Include="Core.cs" />
-		<Compile Include="PermanentPaint.cs" />
+		<Compile Include="Configuration\MarkerPreferences.cs" />
+		<Compile Include="Managers\PaintPersistenceManager.cs" />
+		<Compile Include="Patches\PaintPersistencePatches.cs" />
 	</ItemGroup>
 	<ItemGroup>
 		<PackageReference Include="System.Collections.Immutable" Version="8.0.0" />
