@@ -1,10 +1,14 @@
+using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection.Emit;
 using HarmonyLib;
 using MarkerMod.Config;
 using MarkerMod.Managers;
+using MelonLoader;
 using Mimic;
 using Mimic.Actors;
+using MimicAPI.GameAPI;
 using ReluProtocol;
 using UnityEngine;
 
@@ -78,46 +82,81 @@ namespace MarkerMod.Patches
     [HarmonyPatch(typeof(DecalManager.DecalData), nameof(DecalManager.DecalData.CreateDecalData))]
     internal static class DecalDataCreatePatch
     {
-        [HarmonyPostfix]
-        public static void Postfix(DecalManager.DecalData __result)
-        {
-            PaintPersistenceManager.EnsureDecalLifetime(__result);
-        }
-    }
-
-    [HarmonyPatch(typeof(InventoryItem), nameof(InventoryItem.UpdateInfo))]
-    internal static class InventoryItemUpdateInfoPatch
-    {
-        // Paintball ItemMasterIDs: 70010-70018
-        private static readonly HashSet<int> PaintballMasterIDs = new HashSet<int>
-        {
-            70010, 70011, 70012, 70013, 70014, 70015, 70016, 70017, 70018
-        };
-
         [HarmonyPrefix]
-        public static void Prefix(InventoryItem __instance, ref ItemInfo info)
+        public static void Prefix(string pathWithSocket, ref long lifetimeMSec, ref long fadeoutMSec, Transform spawnBase)
         {
-            // Prevent paintball consumption if infinite paintballs is enabled
-            if (MarkerPreferences.InfinitePaintballs && 
-                PaintballMasterIDs.Contains(__instance.ItemMasterID) &&
-                __instance.ItemID == info.itemID &&
-                info.stackCount < __instance.StackCount)
+            // Check if this is a paintball decal
+            bool hasPaintKeyword = !string.IsNullOrEmpty(pathWithSocket) && pathWithSocket.IndexOf("paint", StringComparison.OrdinalIgnoreCase) >= 0;
+            bool attachedToActor = spawnBase != null;
+            
+            bool keep = false;
+            if (MarkerPreferences.KeepFootprints && attachedToActor && hasPaintKeyword)
             {
-                // Restore the original stack count in the ItemInfo
-                info = new ItemInfo
-                {
-                    itemID = info.itemID,
-                    itemMasterID = info.itemMasterID,
-                    itemType = info.itemType,
-                    stackCount = __instance.StackCount, // Keep the original count
-                    durability = info.durability,
-                    remainGauge = info.remainGauge,
-                    isTurnOn = info.isTurnOn,
-                    isFake = info.isFake,
-                    price = info.price
-                };
+                keep = true;
+            }
+            if (MarkerPreferences.KeepPuddles && !attachedToActor && hasPaintKeyword)
+            {
+                keep = true;
+            }
+            
+            if (keep)
+            {
+                lifetimeMSec = PaintPersistenceManager.PermanentLifetimeMilliseconds;
+                fadeoutMSec = 0L;
+            }
+        }
+        
+        [HarmonyPostfix]
+        public static void Postfix(DecalManager.DecalData __result, string pathWithSocket, Transform spawnBase)
+        {
+            // Track decal if needed
+            bool hasPaintKeyword = !string.IsNullOrEmpty(pathWithSocket) && pathWithSocket.IndexOf("paint", StringComparison.OrdinalIgnoreCase) >= 0;
+            bool attachedToActor = spawnBase != null;
+            
+            if (MarkerPreferences.KeepFootprints && attachedToActor && hasPaintKeyword && __result != null)
+            {
+                PaintPersistenceManager.TrackDecalIfNeeded(__result);
             }
         }
     }
-}
 
+    // Patch SetDurability on EquipmentItemElement to prevent durability decrease for paintballs
+    [HarmonyPatch(typeof(EquipmentItemElement), "SetDurability")]
+    internal static class EquipmentItemElementSetDurabilityPatch
+    {
+        private static readonly HashSet<int> PaintballMasterIDs = new HashSet<int>
+        {
+            2030, 70010, 70011, 70012, 70013, 70014, 70015, 70016, 70017, 70018
+        };
+
+        [HarmonyPrefix]
+        public static bool Prefix(EquipmentItemElement __instance, int durability)
+        {
+            if (!MarkerPreferences.InfinitePaintballs)
+            {
+                return true;
+            }
+
+            try
+            {
+                int itemMasterID = MimicAPI.GameAPI.ReflectionHelper.GetFieldValue<int>(__instance, "ItemMasterID");
+                
+                if (PaintballMasterIDs.Contains(itemMasterID))
+                {
+                    int currentDurability = MimicAPI.GameAPI.ReflectionHelper.GetPropertyValue<int>(__instance, "RemainDurability");
+                    
+                    if (durability < currentDurability)
+                    {
+                        return false;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MelonLogger.Warning($"[InfinitePaintballs] Error in SetDurability patch: {ex.Message}");
+            }
+
+            return true;
+        }
+    }
+}

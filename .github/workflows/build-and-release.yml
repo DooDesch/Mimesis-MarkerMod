@@ -85,7 +85,7 @@ jobs:
           echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Build the project
-        run: dotnet build --configuration Release /p:GameManagedPath="${{ github.workspace }}/Workspace/lib/game" /p:MelonLoaderPath="${{ github.workspace }}/Workspace/lib/melonloader"
+        run: dotnet build --configuration Release /p:GameManagedPath="${{ github.workspace }}/Workspace/lib/game" /p:MelonLoaderPath="${{ github.workspace }}/Workspace/lib/melonloader" /p:MimicAPIPath="${{ github.workspace }}/Workspace/MimicAPI"
 
       - name: Prepare release directory
         run: |

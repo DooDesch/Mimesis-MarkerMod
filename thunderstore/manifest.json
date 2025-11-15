@@ -4,7 +4,8 @@
   "website_url": "https://github.com/DooDesch/Mimesis-MarkerMod",
   "description": "Use paintballs as markers in dungeons. Paintballs create puddles and leave footprints when you walk through them. Without this mod, these effects are useless as they disappear too quickly. MarkerMod makes them into practical markers you can use in dungeons.",
   "dependencies": [
-    "LavaGang-MelonLoader-0.7.1"
+    "LavaGang-MelonLoader-0.7.1",
+    "NeoMimicry-MimicAPI-0.1.1"
   ],
   "contributors": [
     "DooDesch"

@@ -1,10 +1,9 @@
 using System;
 using System.Collections.Generic;
-using System.Reflection;
 using Bifrost.Cooked;
 using MarkerMod.Config;
 using ReluProtocol;
-using HarmonyLib;
+using MimicAPI.GameAPI;
 using UnityEngine;
 
 namespace MarkerMod.Managers
@@ -21,8 +20,6 @@ namespace MarkerMod.Managers
         private static readonly HashSet<string> PermanentDecalIds = new(StringComparer.OrdinalIgnoreCase);
         private static readonly object DecalLock = new();
         private static readonly Func<Hub, DataManager> DataManagerGetter = CreateDataManagerGetter();
-        private static readonly FieldInfo LifetimeField = AccessTools.Field(typeof(DecalManager.DecalData), "LifetimeMSec");
-        private static readonly FieldInfo FadeoutField = AccessTools.Field(typeof(DecalManager.DecalData), "FadeoutMSec");
 
         internal static long PermanentLifetimeMilliseconds
         {
@@ -97,43 +94,28 @@ namespace MarkerMod.Managers
 
         internal static void EnsureDecalLifetime(DecalManager.DecalData decalData)
         {
-            if (decalData == null)
-            {
-                return;
-            }
-
-            bool keep = false;
-
-            if (IsPermanentDecal(decalData.DecalId))
-            {
-                keep = true;
-            }
-
-            bool hasPaintKeyword = ContainsPaintKeyword(decalData.DecalId) || ContainsPaintKeyword(decalData.Socket);
-            bool attachedToActor = decalData.SpawnBase != null;
-
-            if (!keep && MarkerPreferences.KeepFootprints && attachedToActor && hasPaintKeyword)
-            {
-                keep = true;
-            }
-
-            if (!keep && MarkerPreferences.KeepPuddles && !attachedToActor && hasPaintKeyword)
-            {
-                keep = true;
-            }
-
-            if (!keep)
-            {
-                return;
-            }
-
-            TrySetDecalLifetime(decalData, PermanentLifetimeMilliseconds);
+            // This method is no longer used since we modify values in CreateDecalData Prefix
+            // Keeping it for backwards compatibility but it won't do anything
         }
 
-        private static void TrySetDecalLifetime(DecalManager.DecalData decalData, long lifetime)
+        internal static void TrackDecalIfNeeded(DecalManager.DecalData decalData)
         {
-            LifetimeField?.SetValue(decalData, lifetime);
-            FadeoutField?.SetValue(decalData, 0L);
+            if (decalData == null || !MarkerPreferences.KeepFootprints)
+            {
+                return;
+            }
+
+            if (!string.IsNullOrEmpty(decalData.DecalId) && decalData.SpawnBase != null)
+            {
+                bool hasPaintKeyword = ContainsPaintKeyword(decalData.DecalId) || ContainsPaintKeyword(decalData.Socket);
+                if (hasPaintKeyword)
+                {
+                    lock (DecalLock)
+                    {
+                        PermanentDecalIds.Add(decalData.DecalId);
+                    }
+                }
+            }
         }
 
         private static bool ContainsPaintKeyword(string value)
@@ -166,8 +148,7 @@ namespace MarkerMod.Managers
 
         private static Func<Hub, DataManager> CreateDataManagerGetter()
         {
-            MethodInfo getter = AccessTools.PropertyGetter(typeof(Hub), "dataman");
-            return (getter == null) ? _ => null : AccessTools.MethodDelegate<Func<Hub, DataManager>>(getter);
+            return hub => hub != null ? ReflectionHelper.GetPropertyValue<DataManager>(hub, "dataman") : null;
         }
     }
 }

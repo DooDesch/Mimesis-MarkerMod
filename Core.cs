@@ -1,8 +1,11 @@
-﻿using MarkerMod.Config;
+﻿using System.Linq;
+using HarmonyLib;
+using MarkerMod.Config;
 using MelonLoader;
 
 [assembly: MelonInfo(typeof(MarkerMod.Core), "MarkerMod", "1.0.0", "DooDesch", null)]
 [assembly: MelonGame("ReLUGames", "MIMESIS")]
+[assembly: MelonOptionalDependencies("MimicAPI")]
 
 namespace MarkerMod
 {
@@ -11,7 +14,8 @@ namespace MarkerMod
         public override void OnInitializeMelon()
         {
             MarkerPreferences.Initialize();
-			HarmonyInstance.PatchAll();
+            HarmonyInstance.PatchAll();
+            
             LoggerInstance.Msg($"MarkerMod initialized. Lifespan={MarkerPreferences.PermanentLifetimeSeconds:F0}s, Footprints={MarkerPreferences.KeepFootprints}, Puddles={MarkerPreferences.KeepPuddles}, InfinitePaintballs={MarkerPreferences.InfinitePaintballs}");
         }
     }

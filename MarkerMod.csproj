@@ -16,6 +16,7 @@
 		<WorkspaceLibPath Condition="'$(WorkspaceLibPath)' == ''">$(MSBuildThisFileDirectory)../Workspace/lib</WorkspaceLibPath>
 		<GameManagedPath Condition="'$(GameManagedPath)' == ''">$(MSBuildThisFileDirectory)../Workspace/lib/game</GameManagedPath>
 		<MelonLoaderPath Condition="'$(MelonLoaderPath)' == ''">$(MSBuildThisFileDirectory)../Workspace/lib/melonloader</MelonLoaderPath>
+		<MimicAPIPath Condition="'$(MimicAPIPath)' == ''">$(MSBuildThisFileDirectory)../Workspace/MimicAPI</MimicAPIPath>
 	</PropertyGroup>
 
 	<ItemGroup>
@@ -673,6 +674,8 @@
 	<PropertyGroup>
 		<AllowUnsafeBlocks>True</AllowUnsafeBlocks>
 		<EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+		<!-- Suppress warnings from MimicAPI dependencies that are not needed at build time -->
+		<NoWarn>MSB3245</NoWarn>
 	</PropertyGroup>
 
 	<ItemGroup>
@@ -683,6 +686,12 @@
 	</ItemGroup>
 	<ItemGroup>
 		<PackageReference Include="System.Collections.Immutable" Version="8.0.0" />
+	</ItemGroup>
+	<ItemGroup>
+		<ProjectReference Include="$(MimicAPIPath)/MimicAPI.csproj">
+			<ReferenceOutputAssembly>true</ReferenceOutputAssembly>
+			<Private>false</Private>
+		</ProjectReference>
 	</ItemGroup>
 	
 	<Target Name="PostBuild" AfterTargets="PostBuildEvent" Condition="'$(OS)' == 'Windows_NT'">
