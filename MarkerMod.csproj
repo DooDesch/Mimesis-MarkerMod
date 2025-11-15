@@ -685,7 +685,7 @@
 		<PackageReference Include="System.Collections.Immutable" Version="8.0.0" />
 	</ItemGroup>
 	
-	<Target Name="PostBuild" AfterTargets="PostBuildEvent">
-		<Exec Command="COPY &quot;$(TargetPath)&quot; &quot;F:\Launcher\SteamLibrary\steamapps\common\MIMESIS\Mods&quot;" />
+	<Target Name="PostBuild" AfterTargets="PostBuildEvent" Condition="'$(OS)' == 'Windows_NT'">
+		<Exec Condition="Exists('F:\Launcher\SteamLibrary\steamapps\common\MIMESIS\Mods')" Command="COPY &quot;$(TargetPath)&quot; &quot;F:\Launcher\SteamLibrary\steamapps\common\MIMESIS\Mods&quot;" ContinueOnError="true" />
 	</Target>
 </Project>
