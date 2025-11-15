@@ -187,7 +187,7 @@ jobs:
           token: ${{ secrets.THUNDERSTORE_TOKEN }}
           name: MarkerMod
           version: ${{ needs.build.outputs.version }}
-          community: Mimesis
+          community: mimesis
           repo: mimesis.thunderstore.io
           categories: |
             Gameplay
