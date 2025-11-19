@@ -1,8 +1,13 @@
-# MarkerMod
+# MIMESIS - MarkerMod
 
 Use paintballs as markers in dungeons.
 
 Paintballs create puddles and leave footprints when you walk through them. Without this mod, these effects are useless as they disappear too quickly. MarkerMod makes them into practical markers you can use in dungeons.
+
+![Version](https://img.shields.io/badge/version-1.3.1-blue)
+![Game](https://img.shields.io/badge/game-MIMESIS-purple)
+![MelonLoader](https://img.shields.io/badge/MelonLoader-0.7.1+-green)
+![Status](https://img.shields.io/badge/status-working-brightgreen)
 
 ## Features
 
