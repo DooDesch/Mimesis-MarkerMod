@@ -30,7 +30,7 @@ jobs:
       - name: Checkout MimicAPI repository
         uses: actions/checkout@v4
         with:
-          repository: NeoMimicry/MimicAPI
+          repository: ${{ github.repository_owner }}/MimicAPI
           path: Workspace/MimicAPI
 
       - name: Set up .NET
