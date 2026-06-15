@@ -113,12 +113,12 @@ namespace MarkerMod.Patches
     internal static class DecalDataCreatePatch
     {
         [HarmonyPrefix]
-        public static void Prefix(string pathWithSocket, ref string colorId, ref long lifetimeMSec, ref long fadeoutMSec, Transform spawnBase)
+        public static void Prefix(string pathWithSocket, ref long lifetimeMSec, ref long fadeoutMSec, Transform spawnBase)
         {
             // Check if this is a paintball decal
             bool hasPaintKeyword = !string.IsNullOrEmpty(pathWithSocket) && pathWithSocket.IndexOf("paint", StringComparison.OrdinalIgnoreCase) >= 0;
             bool attachedToActor = spawnBase != null;
-            
+
             bool keep = false;
             if (MarkerPreferences.KeepFootprints && attachedToActor && hasPaintKeyword)
             {
@@ -128,21 +128,17 @@ namespace MarkerMod.Patches
             {
                 keep = true;
             }
-            
+
             if (keep)
             {
                 lifetimeMSec = PaintPersistenceManager.PermanentLifetimeMilliseconds;
                 fadeoutMSec = 0L;
             }
 
-            if (MarkerPreferences.EnablePaintballColorChange && hasPaintKeyword)
-            {
-                string newColorId = DecalColorService.GetDecalColorIdForCurrentColor();
-                if (!string.IsNullOrEmpty(newColorId))
-                {
-                    colorId = newColorId;
-                }
-            }
+            // NOTE: Decal color tinting via colorId was removed in game 0.3.0
+            // (DecalData.DecalColor / WorldDecal.decalColor / FieldSkillMemberInfo.DecalColorId
+            // and the CreateDecalData "colorId" parameter no longer exist). The paintball
+            // projectile recoloring path in PaintBallColorManager/MaterialColorService still works.
         }
         
         [HarmonyPostfix]
