@@ -14,6 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.version-check.outputs.version }}
+      notes: ${{ steps.changelog.outputs.notes }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -49,46 +50,22 @@ jobs:
           fi
           echo "version=$TAG_VERSION" >> $GITHUB_OUTPUT
 
-      - name: Generate changelog
+      - name: Extract release notes from CHANGELOG.md
         id: changelog
         run: |
-          TAG_VERSION="${GITHUB_REF#refs/tags/v}"
-          PREVIOUS_TAG=$(git tag --sort=-v:refname | grep -E "^v[0-9]+\.[0-9]+\.[0-9]+$" | sed -n '2p')
-          
-          if [ -z "$PREVIOUS_TAG" ]; then
-            echo "No previous tag found, using all commits"
-            CHANGELOG=$(git log --pretty=format:"- %s (%h)" --no-merges)
-          else
-            echo "Previous tag: $PREVIOUS_TAG"
-            CHANGELOG=$(git log ${PREVIOUS_TAG}..HEAD --pretty=format:"- %s (%h)" --no-merges)
+          # Single source of truth is the hand-maintained CHANGELOG.md. Pull out the section for
+          # this version; it is reused for the GitHub release body and the Nexus file description.
+          VERSION="${{ steps.version-check.outputs.version }}"
+          NOTES=$(awk -v v="$VERSION" 'index($0,"## ["v"]")==1{grab=1;next} index($0,"## [")==1{if(grab)exit} grab{print}' CHANGELOG.md)
+          if [ -z "$NOTES" ]; then
+            echo "::warning::No CHANGELOG.md section found for $VERSION"
+            NOTES="See CHANGELOG.md for details."
           fi
-          
-          if [ -z "$CHANGELOG" ]; then
-            CHANGELOG="- No changes documented"
-          fi
-          
-          # Create changelog content
-          CHANGELOG_CONTENT="# Changelog
-
-          ## Version $TAG_VERSION
-
-          $CHANGELOG
-          "
-          
-          # Update or create CHANGELOG.md
-          if [ -f "thunderstore/CHANGELOG.md" ]; then
-            # Prepend new version to existing changelog
-            echo "$CHANGELOG_CONTENT" > thunderstore/CHANGELOG.md.new
-            tail -n +2 thunderstore/CHANGELOG.md >> thunderstore/CHANGELOG.md.new
-            mv thunderstore/CHANGELOG.md.new thunderstore/CHANGELOG.md
-          else
-            echo "$CHANGELOG_CONTENT" > thunderstore/CHANGELOG.md
-          fi
-          
-          # Output changelog for release notes
-          echo "changelog<<EOF" >> $GITHUB_OUTPUT
-          echo "$CHANGELOG" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+          {
+            echo "notes<<CHANGELOG_EOF"
+            echo "$NOTES"
+            echo "CHANGELOG_EOF"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Build the project
         run: dotnet build --configuration Release /p:WorkspaceLibPath="${{ github.workspace }}/Workspace/lib" /p:GameManagedPath="${{ github.workspace }}/Workspace/lib/game" /p:GameAssemblyPath="${{ github.workspace }}/Workspace/lib/game" /p:MelonLoaderPath="${{ github.workspace }}/Workspace/lib/melonloader" /p:MimicAPIPath="${{ github.workspace }}/Workspace/MimicAPI"
@@ -103,10 +80,13 @@ jobs:
             if [ -f "release/manifest.json" ]; then
               sed -i "s/\"version_number\": \".*\"/\"version_number\": \"${{ steps.version-check.outputs.version }}\"/" release/manifest.json
             fi
-            # Ensure CHANGELOG.md is included
-            if [ -f "thunderstore/CHANGELOG.md" ]; then
-              cp thunderstore/CHANGELOG.md release/
-            fi
+          fi
+          # Ship the maintained CHANGELOG.md in the package (Thunderstore renders it on the
+          # Changelog tab, so the full version history stays visible).
+          if [ -f "CHANGELOG.md" ]; then
+            cp CHANGELOG.md release/
+          fi
+          if [ -d "thunderstore" ]; then
             # Recreate README.md as UTF-8 without BOM
             if [ -f "thunderstore/README.md" ]; then
               cat thunderstore/README.md | iconv -f UTF-8 -t UTF-8//IGNORE > release/README.md 2>/dev/null || \
@@ -124,42 +104,40 @@ jobs:
           name: MarkerMod
           path: "MarkerMod_${{ steps.version-check.outputs.version }}.zip"
 
+      - name: Prepare Nexus bundle (includes MimicAPI.dll)
+        run: |
+          # Nexus has no dependency resolution like Thunderstore, so the runtime dependency
+          # MimicAPI.dll must ship inside the Nexus archive. (Thunderstore keeps using the
+          # NeoMimicry-MimicAPI dependency instead, to avoid loading two copies of MimicAPI.)
+          mkdir -p nexus
+          cp bin/Release/netstandard2.1/MarkerMod.dll nexus/
+          MIMIC_DLL=$(find "${{ github.workspace }}/Workspace/MimicAPI" -path '*/bin/Release/*/MimicAPI.dll' | head -n1)
+          if [ -z "$MIMIC_DLL" ]; then
+            # Some MimicAPI csproj revisions emit to bin/<tfm> without a Release subfolder.
+            MIMIC_DLL=$(find "${{ github.workspace }}/Workspace/MimicAPI" -path '*/bin/*/MimicAPI.dll' | head -n1)
+          fi
+          if [ -z "$MIMIC_DLL" ]; then
+            echo "::error::MimicAPI.dll not found - refusing to ship an incomplete Nexus bundle" >&2
+            exit 1
+          fi
+          cp "$MIMIC_DLL" nexus/
+          if [ -f "thunderstore/README.md" ]; then
+            cp thunderstore/README.md nexus/ || true
+          fi
+          zip -j "MarkerMod_${{ steps.version-check.outputs.version }}_nexus.zip" nexus/*
+          echo "Nexus bundle contents:"
+          unzip -l "MarkerMod_${{ steps.version-check.outputs.version }}_nexus.zip"
+
+      - name: Upload Nexus ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: MarkerMod-nexus
+          path: "MarkerMod_${{ steps.version-check.outputs.version }}_nexus.zip"
+
   release:
     needs: build
     runs-on: ubuntu-latest
     steps:
-      - name: Download built ZIP
-        uses: actions/download-artifact@v4
-        with:
-          name: MarkerMod
-
-      - name: Checkout code for changelog
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Generate changelog for release
-        id: changelog-release
-        run: |
-          TAG_VERSION="${{ needs.build.outputs.version }}"
-          PREVIOUS_TAG=$(git tag --sort=-v:refname | grep -E "^v[0-9]+\.[0-9]+\.[0-9]+$" | sed -n '2p')
-          
-          if [ -z "$PREVIOUS_TAG" ]; then
-            echo "No previous tag found, using all commits"
-            CHANGELOG=$(git log --pretty=format:"- %s (%h)" --no-merges)
-          else
-            echo "Previous tag: $PREVIOUS_TAG"
-            CHANGELOG=$(git log ${PREVIOUS_TAG}..HEAD --pretty=format:"- %s (%h)" --no-merges)
-          fi
-          
-          if [ -z "$CHANGELOG" ]; then
-            CHANGELOG="- No changes documented"
-          fi
-          
-          echo "changelog<<EOF" >> $GITHUB_OUTPUT
-          echo "$CHANGELOG" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
-
       - name: Download built ZIP
         uses: actions/download-artifact@v4
         with:
@@ -177,7 +155,7 @@ jobs:
           body: |
             ## Changes in ${{ needs.build.outputs.version }}
 
-            ${{ steps.changelog-release.outputs.changelog }}
+            ${{ needs.build.outputs.notes }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -197,7 +175,7 @@ jobs:
         run: |
           mkdir -p thunderstore-package
           unzip -q "MarkerMod_${{ needs.build.outputs.version }}.zip" -d thunderstore-package/
-          
+
 
       - name: Upload to Thunderstore
         uses: GreenTF/upload-thunderstore-package@v4.3
@@ -217,19 +195,19 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
-      - name: Download built ZIP
+      - name: Download Nexus bundle (MarkerMod.dll + MimicAPI.dll)
         uses: actions/download-artifact@v4
         with:
-          name: MarkerMod
+          name: MarkerMod-nexus
 
       - name: Upload to Nexus Mods
         uses: Nexus-Mods/upload-action@v1.0.0-beta.7
         with:
           api_key: ${{ secrets.NEXUSMODS_API_KEY }}
           file_group_id: "7545473"
-          filename: "MarkerMod_${{ needs.build.outputs.version }}.zip"
+          filename: "MarkerMod_${{ needs.build.outputs.version }}_nexus.zip"
           version: ${{ needs.build.outputs.version }}
           display_name: "MarkerMod ${{ needs.build.outputs.version }}"
+          description: ${{ needs.build.outputs.notes }}
           file_category: main
           archive_existing_file: true
-
