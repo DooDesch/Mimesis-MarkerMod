@@ -32,7 +32,10 @@ jobs:
       - name: Checkout MimicAPI repository
         uses: actions/checkout@v4
         with:
-          repository: ${{ github.repository_owner }}/MimicAPI
+          # MimicAPI is a public fork that lives on the personal DooDesch account, not the
+          # DooDesch-Mods org the mod repos moved to - so it is hardcoded rather than derived
+          # from github.repository_owner (which would resolve to the non-existent DooDesch-Mods/MimicAPI).
+          repository: DooDesch/MimicAPI
           path: Workspace/MimicAPI
 
       - name: Set up .NET
