@@ -123,6 +123,19 @@ namespace MarkerMod.Managers
             return !string.IsNullOrEmpty(value) && value.IndexOf("paint", StringComparison.OrdinalIgnoreCase) >= 0;
         }
 
+        // Used by the decal-color fix: a decal is a paint decal if its id contains "paint" or it is already tracked as permanent.
+        internal static bool IsPaintDecal(string decalId)
+        {
+            return ContainsPaintKeyword(decalId) || IsPermanentDecal(decalId);
+        }
+
+        // Paint field-skill master IDs: the paint puddles (70010-70018, same ids KeepPuddles targets) and the
+        // paint footprint/spot (71001). Used to scope the self-hit fix to paint splats.
+        internal static bool IsPaintFieldSkill(int fieldSkillMasterID)
+        {
+            return fieldSkillMasterID == PaintspotMasterId || PaintballMasterIds.Contains(fieldSkillMasterID);
+        }
+
         private static FieldSkillMemberInfo ResolveMemberInfo(FieldSkillObjectInfo info)
         {
             Hub hub = Hub.s;

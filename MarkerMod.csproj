@@ -6,9 +6,9 @@
 		<RootNamespace>MarkerMod</RootNamespace>
 		<LangVersion>default</LangVersion>
 		<IsPackable>false</IsPackable>
-		<Version>1.4.2</Version>
-		<AssemblyVersion>1.4.2.0</AssemblyVersion>
-		<FileVersion>1.4.2.0</FileVersion>
+		<Version>1.5.0</Version>
+		<AssemblyVersion>1.5.0.0</AssemblyVersion>
+		<FileVersion>1.5.0.0</FileVersion>
 		<NeutralLanguage>en-US</NeutralLanguage>
 		<AssemblyName>MarkerMod</AssemblyName>
 		<LangVersion>latest</LangVersion>
@@ -684,9 +684,9 @@
 		<Compile Include="Managers\PaintPersistenceManager.cs" />
 		<Compile Include="Managers\PaintBallColorManager.cs" />
 		<Compile Include="Services\MaterialColorService.cs" />
-		<Compile Include="Services\DecalColorService.cs" />
 		<Compile Include="Patches\PaintPersistencePatches.cs" />
 		<Compile Include="Patches\PaintBallColorPatch.cs" />
+		<Compile Include="Patches\ProjectilePatches.cs" />
 	</ItemGroup>
 	<ItemGroup>
 		<PackageReference Include="System.Collections.Immutable" Version="8.0.0" />

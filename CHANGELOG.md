@@ -4,6 +4,17 @@ All notable changes to MarkerMod are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 project adheres to Semantic Versioning.
 
+## [1.5.0] - 2026-06-20
+
+### Fixed
+- Thrown paintballs no longer damage the thrower. After the Mimesis 0.3.0 update a thrown paintball would detonate right next to the player instead of flying, hit them and deal damage. Paintballs now fly properly to where you aim and can never damage their own thrower. (Nexus: "The player takes damage when throwing into the distance".)
+- The selected paintball colour matches the paint on the ground again. The 0.3.0 update removed the game's decal-colour pipeline, so the floor splat stayed its default colour; the mod now colours the floor decal directly to match the ball. (Nexus: "The colors don't match".)
+- The "Infinite Paintballs" setting works again. The 0.3.0 update moved how thrown paintballs are consumed, which made the toggle have no effect; it is now wired to the new consumption path (with the previous durability path kept as a fallback). (Nexus: "infinite Paintballs".)
+
+### Added
+- New "Prevent Paintball Self Damage" setting (default on): keeps your own thrown paintballs from hitting and damaging you, and lets them fly past you instead of detonating at your feet.
+- New experimental "Allow Long Paintball Throws" setting (default off): reduces the navmesh clamp that can make a throw stop short at an invisible wall. Server-authoritative (host only); verify in-game before relying on it.
+
 ## [1.4.2] - 2026-06-17
 
 ### Changed

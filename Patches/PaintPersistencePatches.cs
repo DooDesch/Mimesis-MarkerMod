@@ -106,6 +106,17 @@ namespace MarkerMod.Patches
                 __instance.lifetimeMSec = PaintPersistenceManager.PermanentLifetimeMilliseconds;
                 __instance.fadeoutMSec = 0L;
             }
+
+            // Bug 3: in game 0.3.0 the colorId -> decal-color pipeline was removed, so SpawnDecal never tints
+            // the ground decal (decalColor stays white). Activate() applies decalColor via SetColor() right after
+            // this prefix, so set it here to match the currently selected paintball color for paint decals.
+            if (MarkerPreferences.EnablePaintballColorChange
+                && PaintBallColorManager.HasColorBeenSelected()
+                && PaintBallColorManager.GetCurrentColorIndex() != -1
+                && PaintPersistenceManager.IsPaintDecal(__instance.decalId))
+            {
+                __instance.decalColor = PaintBallColorManager.GetCurrentColor();
+            }
         }
     }
 
@@ -155,15 +166,50 @@ namespace MarkerMod.Patches
         }
     }
 
-    // Patch SetDurability on EquipmentItemElement to prevent durability decrease for paintballs
+    // Bug 1 (primary, game 0.3.0): a thrown paintball is consumed via the new
+    // InventoryController.OnUseSkill_SpawnProjectile path (RemoveFromInventory -> ReserveRemoveInvenItem),
+    // which bypasses SetDurability entirely. Re-wire the InfinitePaintballs toggle onto that path: when enabled
+    // and the projectile is a paintball, skip the method so the item stays in the inventory.
+    [HarmonyPatch(typeof(InventoryController), "OnUseSkill_SpawnProjectile", new[] { typeof(int), typeof(VProjectileObject) })]
+    internal static class OnUseSkillSpawnProjectilePatch
+    {
+        [HarmonyPrefix]
+        public static bool Prefix(VProjectileObject projectile)
+        {
+            if (!MarkerPreferences.InfinitePaintballs || projectile == null)
+            {
+                return true;
+            }
+
+            try
+            {
+                object projectileInfo = ReflectionHelper.GetFieldValue(projectile, "_projectileInfo");
+                if (projectileInfo == null)
+                {
+                    return true;
+                }
+
+                int spawnItemID = ReflectionHelper.GetFieldValue<int>(projectileInfo, "SpawnItemMasterIDonCollision");
+                if (PaintBallColorManager.IsPaintball(spawnItemID))
+                {
+                    // Skip removal + re-pickup setup -> the paintball remains in the inventory (infinite).
+                    return false;
+                }
+            }
+            catch (Exception ex)
+            {
+                MelonLogger.Warning($"[InfinitePaintballs] OnUseSkill_SpawnProjectile patch error: {ex.Message}");
+            }
+
+            return true;
+        }
+    }
+
+    // Bug 1 (fallback): for the !RemoveFromInventory durability branch (and other skill/looting durability sites),
+    // paintball consumption still flows through EquipmentItemElement.SetDurability. Keep blocking that when enabled.
     [HarmonyPatch(typeof(EquipmentItemElement), "SetDurability")]
     internal static class EquipmentItemElementSetDurabilityPatch
     {
-        private static readonly HashSet<int> PaintballMasterIDs = new HashSet<int>
-        {
-            2030, 70010, 70011, 70012, 70013, 70014, 70015, 70016, 70017, 70018
-        };
-
         [HarmonyPrefix]
         public static bool Prefix(EquipmentItemElement __instance, int durability)
         {
@@ -175,8 +221,8 @@ namespace MarkerMod.Patches
             try
             {
                 int itemMasterID = MimicAPI.GameAPI.ReflectionHelper.GetFieldValue<int>(__instance, "ItemMasterID");
-                
-                if (PaintballMasterIDs.Contains(itemMasterID))
+
+                if (PaintBallColorManager.IsPaintball(itemMasterID))
                 {
                     int currentDurability = MimicAPI.GameAPI.ReflectionHelper.GetPropertyValue<int>(__instance, "RemainDurability");
                     
