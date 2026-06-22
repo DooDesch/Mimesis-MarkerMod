@@ -4,6 +4,11 @@ All notable changes to MarkerMod are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 project adheres to Semantic Versioning.
 
+## [1.5.1] - 2026-06-22
+
+### Fixed
+- The mod's Harmony patches were applied twice (MelonLoader auto-applies them, and the mod also called PatchAll() itself), so every patch ran twice. The mod now disables the auto-apply and patches exactly once, after its settings are loaded - so the patches run a single time and the configurable options (including the experimental long-throw option) apply reliably.
+
 ## [1.5.0] - 2026-06-20
 
 ### Fixed

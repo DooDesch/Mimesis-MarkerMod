@@ -10,6 +10,10 @@ using UnityEngine.InputSystem;
 [assembly: MelonInfo(typeof(MarkerMod.Core), "MarkerMod", "1.5.0", "DooDesch", null)]
 [assembly: MelonGame("ReLUGames", "MIMESIS")]
 [assembly: MelonOptionalDependencies("MimicAPI")]
+// Stop MelonLoader from auto-applying our Harmony patches. We call PatchAll() ourselves in OnInitializeMelon,
+// AFTER preferences are initialized, so [HarmonyPrepare]-gated patches (the projectile transpilers) read the
+// real config values. Without this, MelonLoader would auto-patch before init AND we'd patch again = double-apply.
+[assembly: MelonLoader.HarmonyDontPatchAll]
 
 namespace MarkerMod
 {
@@ -18,6 +22,8 @@ namespace MarkerMod
         public override void OnInitializeMelon()
         {
             MarkerPreferences.Initialize();
+            // Single patch application: MelonLoader's auto-patch is disabled via [assembly: HarmonyDontPatchAll],
+            // so this runs exactly once, after preferences exist (so [HarmonyPrepare] gates see real values).
             HarmonyInstance.PatchAll();
 
             LoggerInstance.Msg($"MarkerMod initialized. Lifespan={MarkerPreferences.PermanentLifetimeSeconds:F0}s, Footprints={MarkerPreferences.KeepFootprints}, Puddles={MarkerPreferences.KeepPuddles}, InfinitePaintballs={MarkerPreferences.InfinitePaintballs}");
